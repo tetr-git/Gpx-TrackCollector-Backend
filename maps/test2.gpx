@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<gpx version="1.1" creator="https://www.komoot.de" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>testgpx</name>
+    <author>
+      <link href="https://www.komoot.de">
+        <text>komoot</text>
+        <type>text/html</type>
+      </link>
+    </author>
+  </metadata>
+  <trk>
+    <name>testgpx</name>
+    <trkseg>
+      <trkpt lat="52.490230" lon="13.468062">
+        <ele>41.433162</ele>
+        <time>2023-03-13T14:08:13.051Z</time>
+      </trkpt>
+      <trkpt lat="52.490443" lon="13.467350">
+        <ele>41.433162</ele>
+        <time>2023-03-13T14:08:19.116Z</time>
+      </trkpt>
+      <trkpt lat="52.490659" lon="13.466624">
+        <ele>41.317723</ele>
+        <time>2023-03-13T14:08:24.910Z</time>
+      </trkpt>
+      <trkpt lat="52.491588" lon="13.463518">
+        <ele>38.690894</ele>
+        <time>2023-03-13T14:08:48.888Z</time>
+      </trkpt>
+      <trkpt lat="52.491701" lon="13.463140">
+        <ele>38.690894</ele>
+        <time>2023-03-13T14:08:53.470Z</time>
+      </trkpt>
+      <trkpt lat="52.492031" lon="13.462035">
+        <ele>38.690894</ele>
+        <time>2023-03-13T14:09:07.711Z</time>
+      </trkpt>
+      <trkpt lat="52.492081" lon="13.461868">
+        <ele>38.690894</ele>
+        <time>2023-03-13T14:09:10.082Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
