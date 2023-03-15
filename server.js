@@ -8,25 +8,6 @@ const port = 3003;
 
 app.use(cors());
 
-/*
-app.get("/api/gpx", (req, res) => {
-  const gpxFilePath = path.join(__dirname, "maps", "test.gpx");
-  fs.readFile(gpxFilePath, "utf8", (err, gpxData) => {
-    if (err) {
-      console.error(err);
-      res.status(500).send("Error reading GPX file");
-      return;
-    }
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    const parser = new GPXParser();
-    parser.parse(gpxData);
-    console.log(parser.tracks);
-    console.log("accessed");
-    res.json(parser.tracks);
-  });
-});
-*/
-
 app.get("/api/gpx", (req, res) => {
   const mapsFolderPath = path.join(__dirname, "maps");
   fs.readdir(mapsFolderPath, (err, files) => {
@@ -49,6 +30,7 @@ app.get("/api/gpx", (req, res) => {
           responses.push({ fileName, data: parser.tracks });
         }
         if (responses.length === files.length) {
+          console.log(responses);
           res.json(responses);
         }
       });
