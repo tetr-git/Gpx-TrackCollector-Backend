@@ -87,6 +87,21 @@ app.post("/api/upload", (req, res) => {
   });
 });
 
+app.delete("/api/gpx/:fileName", (req, res) => {
+  const fileName = req.params.fileName;
+  const mapsFolderPath = path.join(__dirname, "maps");
+  const filePath = path.join(mapsFolderPath, fileName);
+
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send("Error deleting the file");
+      return;
+    }
+    res.status(200).json({ message: "File deleted successfully" });
+  });
+});
+
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
