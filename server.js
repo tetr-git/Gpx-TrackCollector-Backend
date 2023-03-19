@@ -32,36 +32,6 @@ const upload = multer({ storage }).single("file");
 
 app.use(cors());
 
-app.get("/api/gpx", (req, res) => {
-  const mapsFolderPath = path.join(__dirname, "maps");
-  fs.readdir(mapsFolderPath, (err, files) => {
-    if (err) {
-      console.error(err);
-      res.status(500).send("Error reading maps folder");
-      return;
-    }
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    const responses = [];
-    files.forEach((fileName) => {
-      const filePath = path.join(mapsFolderPath, fileName);
-      fs.readFile(filePath, "utf8", (err, gpxData) => {
-        if (err) {
-          console.error(err);
-          responses.push({ fileName, error: "Error reading GPX file" });
-        } else {
-          const parser = new GPXParser();
-          parser.parse(gpxData);
-          responses.push({ fileName, data: parser.tracks });
-        }
-        if (responses.length === files.length) {
-          console.log(responses);
-          res.json(responses);
-        }
-      });
-    });
-  });
-});
-
 app.post("/api/upload", (req, res) => {
   upload(req, res, (err) => {
     if (err) {
@@ -99,6 +69,54 @@ app.delete("/api/gpx/:fileName", (req, res) => {
       return;
     }
     res.status(200).json({ message: "File deleted successfully" });
+  });
+});
+
+// Send the number of tracks
+app.get("/api/gpx/all", (req, res) => {
+  const mapsFolderPath = path.join(__dirname, "maps");
+  fs.readdir(mapsFolderPath, (err, files) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send("Error reading maps folder");
+      return;
+    }
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.json({ count: files.length });
+  });
+});
+
+// Use the index for the GET request
+app.get("/api/gpx/:index", (req, res) => {
+  const index = req.params.index;
+  const mapsFolderPath = path.join(__dirname, "maps");
+
+  fs.readdir(mapsFolderPath, async (err, files) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send("Error reading maps folder");
+      return;
+    }
+
+    if (index < 0 || index >= files.length) {
+      res.status(404).send("Track not found");
+      return;
+    }
+
+    const fileName = files[index];
+    const filePath = path.join(mapsFolderPath, fileName);
+
+    fs.readFile(filePath, "utf8", (err, gpxData) => {
+      if (err) {
+        console.error(err);
+        res.status(500).send("Error reading GPX file");
+        return;
+      }
+
+      const parser = new GPXParser();
+      parser.parse(gpxData);
+      res.json({ fileName, data: parser.tracks });
+    });
   });
 });
 
