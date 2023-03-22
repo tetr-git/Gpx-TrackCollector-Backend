@@ -9,18 +9,43 @@ const port = 3003;
 const cookieParser = require("cookie-parser");
 const { User } = require("./db");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 
 const app = express();
-app.use(cors({ origin: true, credentials: true }));
-app.use(
-  cors({
-    origin: "http://localhost:3000",
-    credentials: true,
-  })
-);
+const corsOptions = {
+  origin: "http://localhost:3000",
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "DELETE", "OPTIONS"],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
+
+const authenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findByPk(decoded.id);
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: "Unauthorized" });
+  }
+};
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -45,8 +70,35 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage }).single("file");
 
-app.post("/api/upload", (req, res) => {
-  upload(req, res, (err) => {
+// Add authenticate middleware to the /api/upload route
+app.post("/api/upload", authenticate, (req, res) => {
+  // Modify the storage configuration to save the file in the user's folder
+  const userStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const userFolderPath = path.join(__dirname, "maps", req.user.folderHash);
+      fs.mkdirSync(userFolderPath, { recursive: true });
+      cb(null, userFolderPath);
+    },
+    filename: (req, file, cb) => {
+      const userFolderPath = path.join(__dirname, "maps", req.user.folderHash);
+      fs.readdir(userFolderPath, (err, files) => {
+        if (err) {
+          cb(err);
+          return;
+        }
+
+        if (files.includes(file.originalname)) {
+          cb(new Error("File with the same name already exists"));
+        } else {
+          cb(null, file.originalname);
+        }
+      });
+    },
+  });
+
+  const userUpload = multer({ storage: userStorage }).single("file");
+
+  userUpload(req, res, (err) => {
     if (err) {
       if (err.message === "File with the same name already exists") {
         res.status(409).json({ message: err.message });
@@ -70,10 +122,11 @@ app.post("/api/upload", (req, res) => {
   });
 });
 
-app.delete("/api/gpx/:fileName", (req, res) => {
+// Delete one GPX file
+app.delete("/api/gpx/:fileName", authenticate, (req, res) => {
   const fileName = req.params.fileName;
-  const mapsFolderPath = path.join(__dirname, "maps");
-  const filePath = path.join(mapsFolderPath, fileName);
+  const userFolderPath = path.join(__dirname, "maps", req.user.folderHash);
+  const filePath = path.join(userFolderPath, fileName);
 
   fs.unlink(filePath, (err) => {
     if (err) {
@@ -85,26 +138,40 @@ app.delete("/api/gpx/:fileName", (req, res) => {
   });
 });
 
-// Send the number of tracks
-app.get("/api/gpx/all", (req, res) => {
-  const mapsFolderPath = path.join(__dirname, "maps");
-  fs.readdir(mapsFolderPath, (err, files) => {
+// Geth the number of tracks
+app.get("/api/gpx/all", authenticate, (req, res) => {
+  const userFolderPath = path.join(__dirname, "maps", req.user.folderHash);
+
+  fs.access(userFolderPath, fs.constants.F_OK, (err) => {
     if (err) {
-      console.error(err);
-      res.status(500).send("Error reading maps folder");
+      if (err.code === "ENOENT") {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.json({ count: 0 });
+      } else {
+        console.error(err);
+        res.status(500).send("Error accessing maps folder");
+      }
       return;
     }
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.json({ count: files.length });
+
+    fs.readdir(userFolderPath, (err, files) => {
+      if (err) {
+        console.error(err);
+        res.status(500).send("Error reading maps folder");
+        return;
+      }
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.json({ count: files.length });
+    });
   });
 });
 
 // Use the index for the GET request
-app.get("/api/gpx/:index", (req, res) => {
+app.get("/api/gpx/:index", authenticate, (req, res) => {
   const index = req.params.index;
-  const mapsFolderPath = path.join(__dirname, "maps");
+  const userFolderPath = path.join(__dirname, "maps", req.user.folderHash);
 
-  fs.readdir(mapsFolderPath, async (err, files) => {
+  fs.readdir(userFolderPath, async (err, files) => {
     if (err) {
       console.error(err);
       res.status(500).send("Error reading maps folder");
@@ -117,7 +184,7 @@ app.get("/api/gpx/:index", (req, res) => {
     }
 
     const fileName = files[index];
-    const filePath = path.join(mapsFolderPath, fileName);
+    const filePath = path.join(userFolderPath, fileName);
 
     fs.readFile(filePath, "utf8", (err, gpxData) => {
       if (err) {
@@ -133,14 +200,13 @@ app.get("/api/gpx/:index", (req, res) => {
   });
 });
 
-// Register user (for testing purposes)
+// Register user
 app.post("/api/register", async (req, res) => {
-  console.log(req.body); // Add this line to log the request body
   const { email, password } = req.body;
   const passwordHash = await bcrypt.hash(password, 10);
-  console.log(passwordHash, password, email);
+  const folderHash = crypto.randomBytes(16).toString("hex");
   try {
-    const newUser = await User.create({ email, passwordHash });
+    const newUser = await User.create({ email, passwordHash, folderHash });
     res
       .status(201)
       .json({ message: "User created successfully", user: newUser });
@@ -169,11 +235,7 @@ app.post("/api/login", async (req, res) => {
     expiresIn: "7d",
   });
 
-  res.cookie("token", token, {
-    httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-  res.status(200).json({ message: "Login successful", user });
+  res.status(200).json({ message: "Login successful", user, token });
 });
 
 // Logout user

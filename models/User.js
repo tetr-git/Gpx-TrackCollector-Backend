@@ -13,6 +13,11 @@ const User = (sequelize) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      folderHash: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+      },
     },
     {
       tableName: "brc_user_g",
