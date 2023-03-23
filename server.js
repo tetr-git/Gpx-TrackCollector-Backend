@@ -5,7 +5,6 @@ const express = require("express");
 const GPXParser = require("gpxparser");
 const cors = require("cors");
 const multer = require("multer");
-const port = 3003;
 const cookieParser = require("cookie-parser");
 const { User } = require("./db");
 const bcrypt = require("bcrypt");
@@ -13,6 +12,9 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 
 const app = express();
+const port = 3003;
+
+// Middleware
 const corsOptions = {
   origin: "http://localhost:3000",
   credentials: true,
@@ -24,6 +26,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
+// Authentication Middleware
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -47,6 +50,8 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+// Routes
+// Upload GPX file
 app.post("/api/upload", authenticate, (req, res) => {
   const userStorage = multer.diskStorage({
     destination: (req, file, cb) => {
