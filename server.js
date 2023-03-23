@@ -47,32 +47,7 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "maps");
-  },
-  filename: (req, file, cb) => {
-    const mapsFolderPath = path.join(__dirname, "maps");
-    fs.readdir(mapsFolderPath, (err, files) => {
-      if (err) {
-        cb(err);
-        return;
-      }
-
-      if (files.includes(file.originalname)) {
-        cb(new Error("File with the same name already exists"));
-      } else {
-        cb(null, file.originalname);
-      }
-    });
-  },
-});
-
-const upload = multer({ storage }).single("file");
-
-// Add authenticate middleware to the /api/upload route
 app.post("/api/upload", authenticate, (req, res) => {
-  // Modify the storage configuration to save the file in the user's folder
   const userStorage = multer.diskStorage({
     destination: (req, file, cb) => {
       const userFolderPath = path.join(__dirname, "maps", req.user.folderHash);
@@ -196,6 +171,36 @@ app.get("/api/gpx/:index", authenticate, (req, res) => {
       const parser = new GPXParser();
       parser.parse(gpxData);
       res.json({ fileName, data: parser.tracks });
+    });
+  });
+});
+
+//Download GPX file
+app.get("/api/gpx/download/:fileName", authenticate, (req, res) => {
+  console.log(req);
+  const fileName = req.params.fileName;
+
+  const userFolderPath = path.join(__dirname, "maps", req.user.folderHash);
+
+  fs.readdir(userFolderPath, (err, files) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send("Error reading maps folder");
+      return;
+    }
+
+    if (!files.includes(fileName)) {
+      res.status(404).send("Track not found");
+      return;
+    }
+
+    const filePath = path.join(userFolderPath, fileName);
+
+    res.download(filePath, fileName, (err) => {
+      if (err) {
+        console.error(err);
+        res.status(500).send("Error downloading GPX file");
+      }
     });
   });
 });
