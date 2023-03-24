@@ -20,7 +20,12 @@ router.post("/upload", authenticate, (req, res) => {
       cb(null, userFolderPath);
     },
     filename: (req, file, cb) => {
-      const userFolderPath = path.join(__dirname, "maps", req.user.folderHash);
+      const userFolderPath = path.resolve(
+        __dirname,
+        "..",
+        "maps",
+        req.user.folderHash
+      );
       fs.readdir(userFolderPath, (err, files) => {
         if (err) {
           cb(err);
