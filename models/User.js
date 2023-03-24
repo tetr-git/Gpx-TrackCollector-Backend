@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { DataTypes } = require("sequelize");
 
 const User = (sequelize) => {
@@ -20,7 +21,7 @@ const User = (sequelize) => {
       },
     },
     {
-      tableName: "brc_user_g",
+      tableName: process.env.DB_TABLE_NAME,
     }
   );
 
